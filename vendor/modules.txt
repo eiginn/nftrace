@@ -1,0 +1,7 @@
+# github.com/eiginn/nflog-go v0.0.0-20200422230150-886d67d53459
+## explicit
+github.com/eiginn/nflog-go/nflog
+# github.com/google/gopacket v1.1.17
+## explicit
+github.com/google/gopacket
+github.com/google/gopacket/layers
