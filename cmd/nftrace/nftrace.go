@@ -55,15 +55,15 @@ func lookupRule(prefix string) string {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Println(prefix)
+	fmt.Printf("%s ", prefix)
 	switch kind := fields[2]; kind {
 	case "policy":
-		fmt.Printf("%#v\n", ruleset[fields[0]][fields[1]][0])
+		fmt.Printf("%#v", ruleset[fields[0]][fields[1]][0])
 	//case "return":
 	//	fmt.Println(prefix)
 	//	fmt.Printf("%#v\n", fields)
 	case "rule":
-		fmt.Printf("%#v\n", ruleset[fields[0]][fields[1]][rulenum])
+		fmt.Printf("%#v", ruleset[fields[0]][fields[1]][rulenum])
 	}
 	fmt.Println("")
 
@@ -74,9 +74,7 @@ func main() {
 	app.HelpFlag.Short('h')
 	app.Version("0.0.1")
 	kingpin.MustParse(app.Parse(os.Args[1:]))
-	// get rules ... how the hell to fetch this once and pass to nfCallBack?
 	getRuleSet(iptables.ProtocolIPv4)
-	//fmt.Printf("%+v\n", ruleset)
 
 	// insert TRACE rule
 
@@ -93,7 +91,7 @@ func main() {
 
 	nf, err := nflog.Open(&config)
 	if err != nil {
-		fmt.Println("could not open nflog socket:", err)
+		log.Fatalln("could not open nflog socket:", err)
 		return
 	}
 	defer nf.Close()
@@ -105,13 +103,12 @@ func main() {
 		lookupRule(*attrs.Prefix)
 		packet := gopacket.NewPacket(*attrs.Payload, layers.LayerTypeIPv4, gopacket.Default)
 		packet.Dump()
-		//fmt.Println(packet.Dump())
 		return 0
 	}
 
 	err = nf.Register(ctx, fn)
 	if err != nil {
-		fmt.Println(err)
+		log.Fatalln(err)
 		return
 	}
 

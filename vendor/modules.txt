@@ -12,14 +12,11 @@ github.com/coreos/go-iptables/iptables
 ## explicit
 github.com/florianl/go-nflog
 github.com/florianl/go-nflog/internal/unix
-# github.com/go-cmd/cmd v1.2.0
 ## explicit
 # github.com/google/gopacket v1.1.17
 ## explicit
 github.com/google/gopacket
 github.com/google/gopacket/layers
-# github.com/juliengk/go-netfilter v0.0.0-20190717112259-40a8b7fb5b5a
-## explicit
 # github.com/mdlayher/netlink v1.1.0
 ## explicit
 github.com/mdlayher/netlink
