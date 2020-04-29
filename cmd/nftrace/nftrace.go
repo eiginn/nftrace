@@ -11,6 +11,7 @@ import (
 
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/florianl/go-nflog"
+	"github.com/gofrs/flock"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
 	"gopkg.in/alecthomas/kingpin.v2"
@@ -79,9 +80,18 @@ func main() {
 	// insert TRACE rule
 
 	// hold xtables lock
-
-	// defer xtables unlock
-
+	if *xtablesLock == true {
+		fileLock := flock.New(lockPath)
+		log.Printf("Trying to acquire the lock: %s\n", fileLock.Path())
+		locked, err := fileLock.TryLock()
+		if err != nil {
+			log.Fatalf("Error acquiring xtables lock: %s\n", fileLock.Path())
+		}
+		if locked == false {
+			log.Fatalf("Could not acquire xtables lock: %s\n", fileLock.Path())
+		}
+		defer fileLock.Unlock()
+	}
 	// open socket and start processing messages
 	config := nflog.Config{
 		Group:       *nlgroup,

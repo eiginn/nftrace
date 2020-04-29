@@ -7,6 +7,7 @@ require (
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
 	github.com/coreos/go-iptables v0.4.5
 	github.com/florianl/go-nflog v1.1.0
+	github.com/gofrs/flock v0.7.1
 	github.com/google/gopacket v1.1.17
 	github.com/mdlayher/netlink v1.1.0 // indirect
 	golang.org/x/net v0.0.0-20200421231249-e086a090c8fd // indirect

@@ -12,7 +12,9 @@ github.com/coreos/go-iptables/iptables
 ## explicit
 github.com/florianl/go-nflog
 github.com/florianl/go-nflog/internal/unix
+# github.com/gofrs/flock v0.7.1
 ## explicit
+github.com/gofrs/flock
 # github.com/google/gopacket v1.1.17
 ## explicit
 github.com/google/gopacket
