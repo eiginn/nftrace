@@ -2,6 +2,8 @@ NFTRACE
 =======
 Easier tracing of packets through iptables
 
+Also WARNING this will probably burn your house down
+
 Example
 -------
 Using laptop workstation with most rules managed by ``firewalld``
