@@ -85,6 +85,7 @@ Prerequisites
 ``nfnetlink_log`` as the registered logger for address family (inet/inet6), this may be a deal breaker for some depending on your use of ``(|U|NF)LOG`` targets.
 
 .. code:: bash
+
   cat /proc/net/netfilter/nf_log
    0 nfnetlink_log (nfnetlink_log)
    1 NONE (nfnetlink_log)
