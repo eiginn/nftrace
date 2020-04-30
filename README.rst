@@ -110,3 +110,60 @@ TODO
 - Coalescing of events by packet:
   possibly take payload of log msg (first N bytes of packet), hash it, pass something that will buffer then flush after some time.
 - TRACE rule adding/removing
+
+Alternative Ideas
+-----------------
+
+You don't need this tool to get similar results, though looking up the matching rule would be a pain imo.
+
+Enter nflog+tshark, this still uses ``nfnetlink_log`` as before, except we're going to capture using nflog interface on group 0 ``-i nflog:0``
+
+.. code:: bash
+
+  # change what fields you display to your heart's content
+  [eiginn:~]$ ( sudo timeout 30 tshark -i nflog:0 -Tfields -Eheader=y -Eseparator=\| -e nflog.prefix -e ip -e dns; ) | column -t -s \|
+  Running as user "root" and group "root". This could be dangerous.
+  Capturing on 'nflog:0'
+  39
+  nflog.prefix                                ip                                                             dns
+  TRACE: raw:PREROUTING:rule:2                Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PREROUTING_direct:return:1       Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PREROUTING:rule:3                Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PREROUTING_ZONES:rule:1          Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal:rule:1              Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal_pre:return:1        Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal:rule:2              Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal_log:return:1        Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal:rule:3              Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal_deny:return:1       Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal:rule:4              Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal_allow:return:2      Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal:rule:5              Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal_post:return:1       Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PRE_internal:return:6            Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: raw:PREROUTING:policy:4              Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PREROUTING:rule:1             Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PREROUTING_direct:return:1    Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PREROUTING:rule:2             Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PREROUTING_ZONES:rule:1       Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal:rule:1           Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal_pre:return:1     Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal:rule:2           Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal_log:return:1     Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal:rule:3           Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal_deny:return:1    Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal:rule:4           Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal_allow:return:1   Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal:rule:5           Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal_post:return:1    Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PRE_internal:return:6         Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:PREROUTING:policy:3           Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:INPUT:rule:1                  Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:INPUT_direct:return:1         Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: mangle:INPUT:policy:2                Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: filter:INPUT:rule:1                  Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: security:INPUT:rule:1                Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: security:INPUT_direct:return:1       Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+  TRACE: security:INPUT:policy:2              Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
+
+You can also take a regular pcap of this and load it into wireshark and add ``nflog.prefix`` as a column
