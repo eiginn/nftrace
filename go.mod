@@ -9,6 +9,7 @@ require (
 	github.com/florianl/go-nflog v1.1.0
 	github.com/gofrs/flock v0.7.1
 	github.com/google/gopacket v1.1.17
+	github.com/lorenzosaino/go-sysctl v0.1.1
 	github.com/mdlayher/netlink v1.1.0 // indirect
 	golang.org/x/net v0.0.0-20200421231249-e086a090c8fd // indirect
 	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f // indirect

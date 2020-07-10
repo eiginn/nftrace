@@ -105,11 +105,8 @@ Prerequisites
 TODO
 ----
 
-- sanity check that ``nfnetlink_log`` is registered or nothing will be received
-- IPv6 should not be difficult to add
 - Coalescing of events by packet:
   possibly take payload of log msg (first N bytes of packet), hash it, pass something that will buffer then flush after some time.
-- TRACE rule adding/removing
 
 Alternative Ideas
 -----------------
