@@ -107,6 +107,7 @@ TODO
 
 - Coalescing of events by packet:
   possibly take payload of log msg (first N bytes of packet), hash it, pass something that will buffer then flush after some time.
+- how to handle bidirectional flows? right now its unidirectional unless TRACE rules are handled separately
 
 Alternative Ideas
 -----------------
