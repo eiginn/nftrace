@@ -3,11 +3,13 @@ package main
 import (
 	"bufio"
 	"context"
+	"crypto/sha256"
 	"fmt"
 	"log"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/coreos/go-iptables/iptables"
@@ -30,12 +32,18 @@ var (
 	traceRule   = app.Arg("rule", "Matching conditions for TRACE rule, omitting assumes handled by user").String()
 
 	ruleset = map[string]map[string][]string{}
+	packets = packetagg{ids: make(map[string]gopacket.Packet)}
 )
 
 const (
 	lockPath        = "/var/run/xtables.lock"
 	nlgroup  uint16 = 0 // 0 MUST be used for TRACE
 )
+
+type packetagg = struct {
+	sync.RWMutex
+	ids map[string]gopacket.Packet
+}
 
 func getTableNames(proto iptables.Protocol) []string {
 	var (
@@ -113,25 +121,39 @@ func cleanTraceRule(proto iptables.Protocol, rule *string) {
 	}
 }
 
-func lookupRule(prefix string) string {
+func lookupRule(packet gopacket.Packet, prefix string) string {
 	fields := strings.Split(strings.TrimPrefix(string(prefix), "TRACE: "), ":")
 	rulenum, err := strconv.Atoi(strings.TrimSpace(fields[3]))
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%s ", prefix)
+	id := packetID(packet.Data())
+	packets.RLock()
+	if _, ok := packets.ids[id]; ok == false {
+		packets.RUnlock()
+		packets.Lock()
+		if _, ok := packets.ids[id]; ok == false {
+			packets.ids[id] = packet
+		}
+		packets.Unlock()
+	} else {
+		packets.RUnlock()
+	}
 	switch kind := fields[2]; kind {
 	case "policy":
-		fmt.Printf("%#v", ruleset[fields[0]][fields[1]][0])
+		return fmt.Sprintf("%s %s %#v", id[:12], prefix, ruleset[fields[0]][fields[1]][0])
 	//case "return":
 	//	fmt.Println(prefix)
 	//	fmt.Printf("%#v\n", fields)
 	case "rule":
-		fmt.Printf("%#v", ruleset[fields[0]][fields[1]][rulenum])
+		return fmt.Sprintf("%s %s %#v", id[:12], prefix, ruleset[fields[0]][fields[1]][rulenum])
 	}
-	fmt.Println("")
 
-	return prefix
+	return fmt.Sprintf("%s %s", id[:12], prefix)
+}
+
+func packetID(rawpacket []byte) string {
+	return fmt.Sprintf("%x", sha256.Sum256(rawpacket))
 }
 
 func checkSysctl(af string) {
@@ -139,7 +161,6 @@ func checkSysctl(af string) {
 	if err != nil {
 		log.Fatal(err)
 	}
-	fmt.Printf("%#v\n", val)
 	if val != "nfnetlink_log" {
 		log.Fatalf("nfnetlink_log not loaded for address family, check 'sysctl net.netfilter.nf_log.%s'", af)
 	}
@@ -210,13 +231,12 @@ func main() {
 		// would be nice if we could exclude messages from the wrong address family but
 		// attrs does not have it only parent netlink message does
 		//fmt.Printf("%#v\n", attrs)
-		lookupRule(*attrs.Prefix)
 		if *ipv6 == true {
 			packet := gopacket.NewPacket(*attrs.Payload, layers.LayerTypeIPv6, gopacket.Default)
-			packet.Dump()
+			fmt.Printf("%s\n", lookupRule(packet, *attrs.Prefix))
 		} else {
 			packet := gopacket.NewPacket(*attrs.Payload, layers.LayerTypeIPv4, gopacket.Default)
-			packet.Dump()
+			fmt.Printf("%s\n", lookupRule(packet, *attrs.Prefix))
 		}
 		return 0
 	}
@@ -229,5 +249,10 @@ func main() {
 
 	<-ctx.Done()
 
-	// handle rule cleanup
+	fmt.Printf("\nAggregated packets:\n")
+	packets.RLock()
+	for id, p := range packets.ids {
+		fmt.Printf("%s %s\n", id[:12], p.String())
+	}
+	packets.RUnlock()
 }
