@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 // indirect
 	github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d // indirect
-	github.com/coreos/go-iptables v0.4.5
+	github.com/coreos/go-iptables v0.4.6-0.20200320092053-521ee6c17006
 	github.com/florianl/go-nflog v1.1.1-0.20200801101318-926f20e1f33f
 	github.com/gofrs/flock v0.7.1
 	github.com/google/gopacket v1.1.18

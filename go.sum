@@ -4,8 +4,8 @@ github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751 h1:JYp7IbQjafo
 github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751/go.mod h1:LOuyumcjzFXgccqObfd/Ljyb9UuFJ6TxHnclSeseNhc=
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d h1:UQZhZ2O0vMHr2cI+DC1Mbh0TJxzA3RcLoMsFw+aXw7E=
 github.com/alecthomas/units v0.0.0-20190924025748-f65c72e2690d/go.mod h1:rBZYJk541a8SKzHPHnH3zbiI+7dagKZ0cgpgrD7Fyho=
-github.com/coreos/go-iptables v0.4.5 h1:DpHb9vJrZQEFMcVLFKAAGMUVX0XoRC0ptCthinRYm38=
-github.com/coreos/go-iptables v0.4.5/go.mod h1:/mVI274lEDI2ns62jHCDnCyBF9Iwsmekav8Dbxlm1MU=
+github.com/coreos/go-iptables v0.4.6-0.20200320092053-521ee6c17006 h1:MywbXk6I7+uOXgmblet18fzyzqZ3y8WiSSj164CDxeE=
+github.com/coreos/go-iptables v0.4.6-0.20200320092053-521ee6c17006/go.mod h1:/mVI274lEDI2ns62jHCDnCyBF9Iwsmekav8Dbxlm1MU=
 github.com/davecgh/go-spew v1.1.0 h1:ZDRjVQ15GmhC3fiQ8ni8+OwkZQO4DARzQgrnXU1Liz8=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/florianl/go-nflog v1.1.1-0.20200801101318-926f20e1f33f h1:t5MvDW1NTKEV5QIGXHJY6Cwhwp0aXJAMeAjTb2gHQRo=
