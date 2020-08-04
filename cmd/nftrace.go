@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"strconv"
 	"strings"
 	"sync"
@@ -223,8 +224,26 @@ func main() {
 	}
 	defer nf.Close()
 
-	// TODO fix sigint not being captured to clean up trace rule
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(*timeout)*time.Second)
+	// signal handling context for ctrl-c (SIGINT)
+	sigctx, sigcancel := context.WithCancel(context.Background())
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt)
+	defer func() {
+		signal.Stop(signalChan)
+		sigcancel()
+	}()
+	go func() {
+		select {
+		case <-signalChan: // first signal, cancel context
+			sigcancel()
+		case <-sigctx.Done():
+		}
+		<-signalChan // second signal, hard exit
+		os.Exit(2)
+	}()
+
+	// timeout handling context uses previous context
+	ctx, cancel := context.WithTimeout(sigctx, time.Duration(*timeout)*time.Second)
 	defer cancel()
 
 	fn := func(attrs nflog.Attribute) int {
