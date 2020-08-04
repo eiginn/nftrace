@@ -5,7 +5,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
-	"net"
 	"time"
 	"unsafe"
 
@@ -207,14 +206,20 @@ func (nflog *Nflog) Register(ctx context.Context, fn HookFunc) error {
 			}
 		}()
 		for {
+			if err := ctx.Err(); err != nil {
+				nflog.logger.Printf("Stop receiving nflog messages: %v", err)
+				return
+			}
 			nflog.setReadTimeout()
 			reply, err := nflog.Con.Receive()
 			if err != nil {
-				if ne, ok := err.(net.Error); !ok || !ne.Timeout() {
-					nflog.logger.Printf("Could not receive message: Unexpected error: %v", err)
-					return
+				if opError, ok := err.(*netlink.OpError); ok {
+					if opError.Timeout() || opError.Temporary() {
+						continue
+					}
 				}
-				continue
+				nflog.logger.Printf("Could not receive message: Unexpected error: %v", err)
+				return
 			}
 
 			for _, msg := range reply {
@@ -231,11 +236,6 @@ func (nflog *Nflog) Register(ctx context.Context, fn HookFunc) error {
 				if ret := fn(attrs); ret != 0 {
 					return
 				}
-			}
-			select {
-			case <-ctx.Done():
-				return
-			default:
 			}
 		}
 	}()
