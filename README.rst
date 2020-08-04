@@ -4,6 +4,14 @@ Easier tracing of packets through iptables
 
 Also WARNING this will probably burn your house down
 
+Installation
+------------
+
+.. code:: bash
+
+  go get -u -v github.com/eiginn/nftrace/cmd/nftrace
+
+
 Example
 -------
 Using laptop workstation with most rules managed by ``firewalld``
