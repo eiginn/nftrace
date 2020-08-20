@@ -29,6 +29,11 @@ jobs:
       run: |
         mkdir build
         go build -v -o build/nftrace cmd/nftrace/main.go
+        
+    - uses: actions/upload-artifact@v2
+      with:
+        name: nftrace
+        path: build/nftrace
 
 #    - name: Test
 #      run: go test -v .
