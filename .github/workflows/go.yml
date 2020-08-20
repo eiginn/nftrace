@@ -26,7 +26,9 @@ jobs:
       run: go get -v -t -d ./...
 
     - name: Build
-      run: go build -v .
+      run: |
+        mkdir build
+        go build -v -o build/nftrace cmd/nftrace/main.go
 
 #    - name: Test
 #      run: go test -v .
