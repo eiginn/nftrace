@@ -126,6 +126,16 @@ Using laptop workstation with most rules managed by ``firewalld``
   - Layer 3 (55 bytes) = DNS      {Contents=[..55..] Payload=[] ID=39540 QR=true OpCode=Query AA=false TC=false RD=true RA=true Z=0 ResponseCode=No Error QDCount=1 ANCount=1 NSCount=0 ARCount=1 Questions=[{Name=[..10..] Type=A Class=IN}] Answers=[{Name=[..10..] Type=A Class=IN TTL=298 DataLength=4 Data=[216, 58, 195, 78] IP=216.58.195.78 NS=[] CNAME=[] PTR=[] TXTs=[] SOA={ MName=[] RName=[] Serial=0 Refresh=0 Retry=0 Expire=0 Minimum=0} SRV={ Priority=0 Weight=0 Port=0 Name=[]} MX={ Preference=0 Name=[]} OPT=[] TXT=[]}] Authorities=[] Additionals=[{Name=[] Type=OPT Class=Unknown TTL=0 DataLength=0 Data=[] IP=<nil> NS=[] CNAME=[] PTR=[] TXTs=[] SOA={ MName=[] RName=[] Serial=0 Refresh=0 Retry=0 Expire=0 Minimum=0} SRV={ Priority=0 Weight=0 Port=0 Name=[]} MX={ Preference=0 Name=[]} OPT=[] TXT=[]}]}
   
 
+nftrace can also handle inserting and removing the rule for you:
+
+.. code:: bash
+
+  [eiginn:~]$ sudo nftrace -l -4 'PREROUTING -s 8.8.8.8/32 -p udp -m udp --sport 53 -m limit --limit 2/min'
+  2020/09/30 19:53:50 Adding rule: -t raw -I PREROUTING -s 8.8.8.8/32 -p udp -m udp --sport 53 -m limit --limit 2/min -j TRACE
+  2020/09/30 19:53:50 Trying to acquire the lock: /var/run/xtables.lock
+  <snip>
+  2020/09/30 19:53:58 Removing rule: -t raw -A PREROUTING -s 8.8.8.8/32 -p udp -m udp --sport 53 -m limit --limit 2/min -j TRACE
+
 
 Why
 ---
