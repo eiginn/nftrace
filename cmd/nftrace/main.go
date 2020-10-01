@@ -247,6 +247,12 @@ func main() {
 		// would be nice if we could exclude messages from the wrong address family but
 		// attrs does not have it only parent netlink message does
 		//fmt.Printf("%#v\n", attrs)
+
+		// We could get non netfilter trace messages on group 0
+		// like nf_conntrack_log_invalid
+		if !strings.Contains(*attrs.Prefix, "TRACE:") {
+			return 0
+		}
 		if *ipv6 == true {
 			packet := gopacket.NewPacket(*attrs.Payload, layers.LayerTypeIPv6, gopacket.Default)
 			fmt.Printf("%s\n", lookupRule(packet, *attrs.Prefix))
