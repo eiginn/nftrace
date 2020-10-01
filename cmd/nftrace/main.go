@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/coreos/go-iptables/iptables"
-	"github.com/florianl/go-nflog"
+	"github.com/florianl/go-nflog/v2"
 	"github.com/gofrs/flock"
 	"github.com/google/gopacket"
 	"github.com/google/gopacket/layers"
@@ -143,9 +143,6 @@ func lookupRule(packet gopacket.Packet, prefix string) string {
 	switch kind := fields[2]; kind {
 	case "policy":
 		return fmt.Sprintf("%s %s %#v", id[:12], prefix, ruleset[fields[0]][fields[1]][0])
-	//case "return":
-	//	fmt.Println(prefix)
-	//	fmt.Printf("%#v\n", fields)
 	case "rule":
 		return fmt.Sprintf("%s %s %#v", id[:12], prefix, ruleset[fields[0]][fields[1]][rulenum])
 	}
