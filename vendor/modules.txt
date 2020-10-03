@@ -27,6 +27,9 @@ github.com/lorenzosaino/go-sysctl
 # github.com/mdlayher/netlink v1.1.0
 github.com/mdlayher/netlink
 github.com/mdlayher/netlink/nlenc
+# github.com/x-way/pktdump v0.0.2
+## explicit
+github.com/x-way/pktdump
 # golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 golang.org/x/lint
 golang.org/x/lint/golint
