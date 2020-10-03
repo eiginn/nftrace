@@ -2,8 +2,6 @@ NFTRACE
 =======
 Easier tracing of packets through iptables
 
-Also WARNING this will probably burn your house down
-
 Installation
 ------------
 
@@ -12,129 +10,125 @@ Installation
   go get -u -v github.com/eiginn/nftrace/cmd/nftrace
 
 
-Example
+Examples
 -------
+Quick and contrived example: "Weird, udp dns queries to 8.8.8.8 work and yet 8.8.4.4 is timing out, how odd" :)
+
+.. code:: bash
+
+  root@92ea2d329032:/# ./nftrace -p'-s 8.8.4.4'
+  2020/10/02 20:28:43 Adding rule: -t raw -I PREROUTING -s 8.8.4.4 -j TRACE
+  333e26bf278d TRACE: raw:PREROUTING:rule:3  "-A PREROUTING -s 8.8.4.4/32 -p udp -m udp --sport 53 -j MARK --set-xmark 0xef/0xffffffff"
+  333e26bf278d TRACE: raw:PREROUTING:policy:4  "-P PREROUTING ACCEPT"
+  333e26bf278d TRACE: filter:INPUT:rule:1  "-A INPUT -m mark --mark 0xef -j DROP"
+
+  Aggregated packets:
+  333e26bf278d IP 8.8.4.4.53 > 172.20.0.2.37784: 31439 1/0/1 A 216.58.195.78 (55)
+
+  2020/10/02 20:29:13 Removing rule: -t raw -A PREROUTING -s 8.8.4.4 -j TRACE
+
 Using laptop workstation with most rules managed by ``firewalld``
 
 .. code:: bash
 
-  # Need two TRACE rules to capture flows in both directions
-  [eiginn:~]$ sudo iptables -t raw -I OUTPUT -p udp -m udp --dport 53 -j TRACE
-  [eiginn:~]$ sudo iptables -t raw -I PREROUTING -p udp -m udp --sport 53 -j TRACE
-
   # In another terminal, get ready to run
-  [eiginn:~]$ dig @8.8.8.8 google.com
+  [eiginn:~]$ ping -6 -n -c 1 2001:4860:4860::8888
 
-  # run nftrace and then dig command
-  [eiginn:~]$ sudo nftrace -4
-  2020/08/03 18:13:10 Assuming TRACE rule(s) handled seperately
-  324792e67d8a TRACE: raw:OUTPUT:rule:2  "-A OUTPUT -j OUTPUT_direct"
-  324792e67d8a TRACE: raw:OUTPUT_direct:return:1
-  324792e67d8a TRACE: raw:OUTPUT:policy:3  "-P OUTPUT ACCEPT"
-  324792e67d8a TRACE: mangle:OUTPUT:rule:1  "-A OUTPUT -j OUTPUT_direct"
-  324792e67d8a TRACE: mangle:OUTPUT_direct:return:1
-  324792e67d8a TRACE: mangle:OUTPUT:policy:2  "-P OUTPUT ACCEPT"
-  324792e67d8a TRACE: nat:OUTPUT:rule:1  "-A OUTPUT -j OUTPUT_direct"
-  324792e67d8a TRACE: nat:OUTPUT_direct:return:1
-  324792e67d8a TRACE: nat:OUTPUT:policy:3  "-P OUTPUT ACCEPT"
-  324792e67d8a TRACE: filter:OUTPUT:rule:1  "-A OUTPUT -j LIBVIRT_OUT"
-  324792e67d8a TRACE: filter:LIBVIRT_OUT:return:5
-  324792e67d8a TRACE: filter:OUTPUT:rule:3  "-A OUTPUT -j OUTPUT_direct"
-  324792e67d8a TRACE: filter:OUTPUT_direct:return:1
-  324792e67d8a TRACE: filter:OUTPUT:policy:4  "-P OUTPUT ACCEPT"
-  324792e67d8a TRACE: security:OUTPUT:rule:1  "-A OUTPUT -j OUTPUT_direct"
-  324792e67d8a TRACE: security:OUTPUT_direct:return:1
-  324792e67d8a TRACE: security:OUTPUT:policy:2  "-P OUTPUT ACCEPT"
-  324792e67d8a TRACE: mangle:POSTROUTING:rule:1  "-A POSTROUTING -j LIBVIRT_PRT"
-  324792e67d8a TRACE: mangle:LIBVIRT_PRT:return:2
-  324792e67d8a TRACE: mangle:POSTROUTING:rule:2  "-A POSTROUTING -j POSTROUTING_direct"
-  324792e67d8a TRACE: mangle:POSTROUTING_direct:return:1
-  324792e67d8a TRACE: mangle:POSTROUTING:policy:3  "-P POSTROUTING ACCEPT"
-  324792e67d8a TRACE: nat:POSTROUTING:rule:1  "-A POSTROUTING -j ts-postrouting"
-  324792e67d8a TRACE: nat:ts-postrouting:return:2
-  324792e67d8a TRACE: nat:POSTROUTING:rule:3  "-A POSTROUTING -j LIBVIRT_PRT"
-  324792e67d8a TRACE: nat:LIBVIRT_PRT:return:6
-  324792e67d8a TRACE: nat:POSTROUTING:rule:4  "-A POSTROUTING -j POSTROUTING_direct"
-  324792e67d8a TRACE: nat:POSTROUTING_direct:return:1
-  324792e67d8a TRACE: nat:POSTROUTING:rule:5  "-A POSTROUTING -j POSTROUTING_ZONES"
-  324792e67d8a TRACE: nat:POSTROUTING_ZONES:rule:1  "-A POSTROUTING_ZONES -o wlp61s0 -g POST_home"
-  324792e67d8a TRACE: nat:POST_home:rule:1  "-A POST_home -j POST_home_pre"
-  324792e67d8a TRACE: nat:POST_home_pre:return:1
-  324792e67d8a TRACE: nat:POST_home:rule:2  "-A POST_home -j POST_home_log"
-  324792e67d8a TRACE: nat:POST_home_log:return:1
-  324792e67d8a TRACE: nat:POST_home:rule:3  "-A POST_home -j POST_home_deny"
-  324792e67d8a TRACE: nat:POST_home_deny:return:1
-  324792e67d8a TRACE: nat:POST_home:rule:4  "-A POST_home -j POST_home_allow"
-  324792e67d8a TRACE: nat:POST_home_allow:return:1
-  324792e67d8a TRACE: nat:POST_home:rule:5  "-A POST_home -j POST_home_post"
-  324792e67d8a TRACE: nat:POST_home_post:return:1
-  324792e67d8a TRACE: nat:POST_home:return:6
-  324792e67d8a TRACE: nat:POSTROUTING:policy:6  "-P POSTROUTING ACCEPT"
-  4fbdc33389d9 TRACE: raw:PREROUTING:rule:2  "-A PREROUTING -j PREROUTING_direct"
-  4fbdc33389d9 TRACE: raw:PREROUTING_direct:return:1
-  4fbdc33389d9 TRACE: raw:PREROUTING:rule:3  "-A PREROUTING -j PREROUTING_ZONES"
-  4fbdc33389d9 TRACE: raw:PREROUTING_ZONES:rule:1  "-A PREROUTING_ZONES -i wlp61s0 -g PRE_home"
-  4fbdc33389d9 TRACE: raw:PRE_home:rule:1  "-A PRE_home -j PRE_home_pre"
-  4fbdc33389d9 TRACE: raw:PRE_home_pre:return:1
-  4fbdc33389d9 TRACE: raw:PRE_home:rule:2  "-A PRE_home -j PRE_home_log"
-  4fbdc33389d9 TRACE: raw:PRE_home_log:return:1
-  4fbdc33389d9 TRACE: raw:PRE_home:rule:3  "-A PRE_home -j PRE_home_deny"
-  4fbdc33389d9 TRACE: raw:PRE_home_deny:return:1
-  4fbdc33389d9 TRACE: raw:PRE_home:rule:4  "-A PRE_home -j PRE_home_allow"
-  4fbdc33389d9 TRACE: raw:PRE_home_allow:return:2
-  4fbdc33389d9 TRACE: raw:PRE_home:rule:5  "-A PRE_home -j PRE_home_post"
-  4fbdc33389d9 TRACE: raw:PRE_home_post:return:1
-  4fbdc33389d9 TRACE: raw:PRE_home:return:6
-  4fbdc33389d9 TRACE: raw:PREROUTING:policy:4  "-P PREROUTING ACCEPT"
-  4fbdc33389d9 TRACE: mangle:PREROUTING:rule:1  "-A PREROUTING -j PREROUTING_direct"
-  4fbdc33389d9 TRACE: mangle:PREROUTING_direct:return:1
-  4fbdc33389d9 TRACE: mangle:PREROUTING:rule:2  "-A PREROUTING -j PREROUTING_ZONES"
-  4fbdc33389d9 TRACE: mangle:PREROUTING_ZONES:rule:1  "-A PREROUTING_ZONES -i wlp61s0 -g PRE_home"
-  4fbdc33389d9 TRACE: mangle:PRE_home:rule:1  "-A PRE_home -j PRE_home_pre"
-  4fbdc33389d9 TRACE: mangle:PRE_home_pre:return:1
-  4fbdc33389d9 TRACE: mangle:PRE_home:rule:2  "-A PRE_home -j PRE_home_log"
-  4fbdc33389d9 TRACE: mangle:PRE_home_log:return:1
-  4fbdc33389d9 TRACE: mangle:PRE_home:rule:3  "-A PRE_home -j PRE_home_deny"
-  4fbdc33389d9 TRACE: mangle:PRE_home_deny:return:1
-  4fbdc33389d9 TRACE: mangle:PRE_home:rule:4  "-A PRE_home -j PRE_home_allow"
-  4fbdc33389d9 TRACE: mangle:PRE_home_allow:return:1
-  4fbdc33389d9 TRACE: mangle:PRE_home:rule:5  "-A PRE_home -j PRE_home_post"
-  4fbdc33389d9 TRACE: mangle:PRE_home_post:return:1
-  4fbdc33389d9 TRACE: mangle:PRE_home:return:6
-  4fbdc33389d9 TRACE: mangle:PREROUTING:policy:3  "-P PREROUTING ACCEPT"
-  4fbdc33389d9 TRACE: mangle:INPUT:rule:1  "-A INPUT -j INPUT_direct"
-  4fbdc33389d9 TRACE: mangle:INPUT_direct:return:1
-  4fbdc33389d9 TRACE: mangle:INPUT:policy:2  "-P INPUT ACCEPT"
-  4fbdc33389d9 TRACE: filter:INPUT:rule:1  "-A INPUT -j ts-input"
-  4fbdc33389d9 TRACE: filter:ts-input:return:4
-  4fbdc33389d9 TRACE: filter:INPUT:rule:2  "-A INPUT -j LIBVIRT_INP"
-  4fbdc33389d9 TRACE: filter:LIBVIRT_INP:return:5
-  4fbdc33389d9 TRACE: filter:INPUT:rule:3  "-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED,DNAT -j ACCEPT"
-  4fbdc33389d9 TRACE: security:INPUT:rule:1  "-A INPUT -j INPUT_direct"
-  4fbdc33389d9 TRACE: security:INPUT_direct:return:1
-  4fbdc33389d9 TRACE: security:INPUT:policy:2  "-P INPUT ACCEPT"
-  ^C
+  # run nftrace and then ping command
+  [eiginn:~]$ sudo nftrace -6 -p'-s 2001:4860:4860::8888/128 -p ipv6-icmp' -o'-d 2001:4860:4860::8888/128 -p ipv6-icmp'
+  2020/10/02 19:56:02 Adding rule: -t raw -I PREROUTING -s 2001:4860:4860::8888/128 -p ipv6-icmp -j TRACE
+  2020/10/02 19:56:02 Adding rule: -t raw -I OUTPUT -d 2001:4860:4860::8888/128 -p ipv6-icmp -j TRACE
+  97f031f9d7f1 TRACE: raw:OUTPUT:rule:2  "-A OUTPUT -j OUTPUT_direct"
+  97f031f9d7f1 TRACE: raw:OUTPUT_direct:return:1
+  97f031f9d7f1 TRACE: raw:OUTPUT:policy:3  "-P OUTPUT ACCEPT"
+  97f031f9d7f1 TRACE: mangle:OUTPUT:rule:1  "-A OUTPUT -j OUTPUT_direct"
+  97f031f9d7f1 TRACE: mangle:OUTPUT_direct:return:1
+  97f031f9d7f1 TRACE: mangle:OUTPUT:policy:2  "-P OUTPUT ACCEPT"
+  97f031f9d7f1 TRACE: nat:OUTPUT:rule:1  "-A OUTPUT -j OUTPUT_direct"
+  97f031f9d7f1 TRACE: nat:OUTPUT_direct:return:1
+  97f031f9d7f1 TRACE: nat:OUTPUT:policy:2  "-P OUTPUT ACCEPT"
+  97f031f9d7f1 TRACE: filter:OUTPUT:rule:1  "-A OUTPUT -j LIBVIRT_OUT"
+  97f031f9d7f1 TRACE: filter:LIBVIRT_OUT:return:1
+  97f031f9d7f1 TRACE: filter:OUTPUT:rule:3  "-A OUTPUT -j OUTPUT_direct"
+  97f031f9d7f1 TRACE: filter:OUTPUT_direct:return:1
+  97f031f9d7f1 TRACE: filter:OUTPUT:rule:4  "-A OUTPUT -j RFC3964_IPv4"
+  97f031f9d7f1 TRACE: filter:RFC3964_IPv4:return:19
+  97f031f9d7f1 TRACE: filter:OUTPUT:policy:5  "-P OUTPUT ACCEPT"
+  97f031f9d7f1 TRACE: security:OUTPUT:rule:1  "-A OUTPUT -p ipv6-icmp -m comment --comment \"wouldn\\'t you have liked to know this rule was hit?\""
+  97f031f9d7f1 TRACE: security:OUTPUT:rule:2  "-A OUTPUT -j OUTPUT_direct"
+  97f031f9d7f1 TRACE: security:OUTPUT_direct:return:1
+  97f031f9d7f1 TRACE: security:OUTPUT:policy:3  "-P OUTPUT ACCEPT"
+  97f031f9d7f1 TRACE: mangle:POSTROUTING:rule:1  "-A POSTROUTING -j LIBVIRT_PRT"
+  97f031f9d7f1 TRACE: mangle:LIBVIRT_PRT:return:1
+  97f031f9d7f1 TRACE: mangle:POSTROUTING:rule:2  "-A POSTROUTING -j POSTROUTING_direct"
+  97f031f9d7f1 TRACE: mangle:POSTROUTING_direct:return:1
+  97f031f9d7f1 TRACE: mangle:POSTROUTING:policy:3  "-P POSTROUTING ACCEPT"
+  97f031f9d7f1 TRACE: nat:POSTROUTING:rule:1  "-A POSTROUTING -j LIBVIRT_PRT"
+  97f031f9d7f1 TRACE: nat:LIBVIRT_PRT:return:1
+  97f031f9d7f1 TRACE: nat:POSTROUTING:rule:2  "-A POSTROUTING -j POSTROUTING_direct"
+  97f031f9d7f1 TRACE: nat:POSTROUTING_direct:return:1
+  97f031f9d7f1 TRACE: nat:POSTROUTING:rule:3  "-A POSTROUTING -j POSTROUTING_ZONES"
+  97f031f9d7f1 TRACE: nat:POSTROUTING_ZONES:rule:1  "-A POSTROUTING_ZONES -o wlp61s0 -g POST_home"
+  97f031f9d7f1 TRACE: nat:POST_home:rule:1  "-A POST_home -j POST_home_pre"
+  97f031f9d7f1 TRACE: nat:POST_home_pre:return:1
+  97f031f9d7f1 TRACE: nat:POST_home:rule:2  "-A POST_home -j POST_home_log"
+  97f031f9d7f1 TRACE: nat:POST_home_log:return:1
+  97f031f9d7f1 TRACE: nat:POST_home:rule:3  "-A POST_home -j POST_home_deny"
+  97f031f9d7f1 TRACE: nat:POST_home_deny:return:1
+  97f031f9d7f1 TRACE: nat:POST_home:rule:4  "-A POST_home -j POST_home_allow"
+  97f031f9d7f1 TRACE: nat:POST_home_allow:return:1
+  97f031f9d7f1 TRACE: nat:POST_home:rule:5  "-A POST_home -j POST_home_post"
+  97f031f9d7f1 TRACE: nat:POST_home_post:return:1
+  97f031f9d7f1 TRACE: nat:POST_home:return:6
+  97f031f9d7f1 TRACE: nat:POSTROUTING:policy:4  "-P POSTROUTING ACCEPT"
+  36c479892f1c TRACE: raw:PREROUTING:rule:2  "-A PREROUTING -j PREROUTING_direct"
+  36c479892f1c TRACE: raw:PREROUTING_direct:return:1
+  36c479892f1c TRACE: raw:PREROUTING:rule:3  "-A PREROUTING -j PREROUTING_ZONES"
+  36c479892f1c TRACE: raw:PREROUTING_ZONES:rule:1  "-A PREROUTING_ZONES -i wlp61s0 -g PRE_home"
+  36c479892f1c TRACE: raw:PRE_home:rule:1  "-A PRE_home -j PRE_home_pre"
+  36c479892f1c TRACE: raw:PRE_home_pre:return:1
+  36c479892f1c TRACE: raw:PRE_home:rule:2  "-A PRE_home -j PRE_home_log"
+  36c479892f1c TRACE: raw:PRE_home_log:return:1
+  36c479892f1c TRACE: raw:PRE_home:rule:3  "-A PRE_home -j PRE_home_deny"
+  36c479892f1c TRACE: raw:PRE_home_deny:return:1
+  36c479892f1c TRACE: raw:PRE_home:rule:4  "-A PRE_home -j PRE_home_allow"
+  36c479892f1c TRACE: raw:PRE_home_allow:return:1
+  36c479892f1c TRACE: raw:PRE_home:rule:5  "-A PRE_home -j PRE_home_post"
+  36c479892f1c TRACE: raw:PRE_home_post:return:1
+  36c479892f1c TRACE: raw:PRE_home:return:6
+  36c479892f1c TRACE: raw:PREROUTING:policy:4  "-P PREROUTING ACCEPT"
+  36c479892f1c TRACE: mangle:PREROUTING:rule:1  "-A PREROUTING -j PREROUTING_direct"
+  36c479892f1c TRACE: mangle:PREROUTING_direct:return:1
+  36c479892f1c TRACE: mangle:PREROUTING:rule:2  "-A PREROUTING -j PREROUTING_ZONES"
+  36c479892f1c TRACE: mangle:PREROUTING_ZONES:rule:1  "-A PREROUTING_ZONES -i wlp61s0 -g PRE_home"
+  36c479892f1c TRACE: mangle:PRE_home:rule:1  "-A PRE_home -j PRE_home_pre"
+  36c479892f1c TRACE: mangle:PRE_home_pre:return:1
+  36c479892f1c TRACE: mangle:PRE_home:rule:2  "-A PRE_home -j PRE_home_log"
+  36c479892f1c TRACE: mangle:PRE_home_log:return:1
+  36c479892f1c TRACE: mangle:PRE_home:rule:3  "-A PRE_home -j PRE_home_deny"
+  36c479892f1c TRACE: mangle:PRE_home_deny:return:1
+  36c479892f1c TRACE: mangle:PRE_home:rule:4  "-A PRE_home -j PRE_home_allow"
+  36c479892f1c TRACE: mangle:PRE_home_allow:return:1
+  36c479892f1c TRACE: mangle:PRE_home:rule:5  "-A PRE_home -j PRE_home_post"
+  36c479892f1c TRACE: mangle:PRE_home_post:return:1
+  36c479892f1c TRACE: mangle:PRE_home:return:6
+  36c479892f1c TRACE: mangle:PREROUTING:policy:3  "-P PREROUTING ACCEPT"
+  36c479892f1c TRACE: mangle:INPUT:rule:1  "-A INPUT -j INPUT_direct"
+  36c479892f1c TRACE: mangle:INPUT_direct:return:1
+  36c479892f1c TRACE: mangle:INPUT:policy:2  "-P INPUT ACCEPT"
+  36c479892f1c TRACE: filter:INPUT:rule:2  "-A INPUT -j LIBVIRT_INP"
+  36c479892f1c TRACE: filter:LIBVIRT_INP:return:1
+  36c479892f1c TRACE: filter:INPUT:rule:3  "-A INPUT -m conntrack --ctstate RELATED,ESTABLISHED,DNAT -j ACCEPT"
+  36c479892f1c TRACE: security:INPUT:rule:1  "-A INPUT -j INPUT_direct"
+  36c479892f1c TRACE: security:INPUT_direct:return:1
+  36c479892f1c TRACE: security:INPUT:policy:2  "-P INPUT ACCEPT"
+
   Aggregated packets:
-  324792e67d8a PACKET: 79 bytes
-  - Layer 1 (20 bytes) = IPv4     {Contents=[..20..] Payload=[..59..] Version=4 IHL=5 TOS=0 Length=79 Id=8293 Flags= FragOffset=0 TTL=64 Protocol=UDP Checksum=16314 SrcIP=192.168.1.112 DstIP=8.8.8.8 Options=[] Padding=[]}
-  - Layer 2 (08 bytes) = UDP      {Contents=[..8..] Payload=[..51..] SrcPort=57779 DstPort=53(domain) Length=59 Checksum=8133}
-  - Layer 3 (51 bytes) = DNS      {Contents=[..51..] Payload=[] ID=39540 QR=false OpCode=Query AA=false TC=false RD=true RA=false Z=2 ResponseCode=No Error QDCount=1 ANCount=0 NSCount=0 ARCount=1 Questions=[{Name=[..10..] Type=A Class=IN}] Answers=[] Authorities=[] Additionals=[{Name=[] Type=OPT Class=Unknown TTL=0 DataLength=12 Data=[..12..] IP=<nil> NS=[] CNAME=[] PTR=[] TXTs=[] SOA={ MName=[] RName=[] Serial=0 Refresh=0 Retry=0 Expire=0 Minimum=0} SRV={ Priority=0 Weight=0 Port=0 Name=[]} MX={ Preference=0 Name=[]} OPT=[Cookie=d271a694a95bc98b] TXT=[]}]}
-  
-  4fbdc33389d9 PACKET: 83 bytes
-  - Layer 1 (20 bytes) = IPv4     {Contents=[..20..] Payload=[..63..] Version=4 IHL=5 TOS=32 Length=83 Id=31227 Flags= FragOffset=0 TTL=122 Protocol=UDP Checksum=44031 SrcIP=8.8.8.8 DstIP=192.168.1.112 Options=[] Padding=[]}
-  - Layer 2 (08 bytes) = UDP      {Contents=[..8..] Payload=[..55..] SrcPort=53(domain) DstPort=57779 Length=63 Checksum=20111}
-  - Layer 3 (55 bytes) = DNS      {Contents=[..55..] Payload=[] ID=39540 QR=true OpCode=Query AA=false TC=false RD=true RA=true Z=0 ResponseCode=No Error QDCount=1 ANCount=1 NSCount=0 ARCount=1 Questions=[{Name=[..10..] Type=A Class=IN}] Answers=[{Name=[..10..] Type=A Class=IN TTL=298 DataLength=4 Data=[216, 58, 195, 78] IP=216.58.195.78 NS=[] CNAME=[] PTR=[] TXTs=[] SOA={ MName=[] RName=[] Serial=0 Refresh=0 Retry=0 Expire=0 Minimum=0} SRV={ Priority=0 Weight=0 Port=0 Name=[]} MX={ Preference=0 Name=[]} OPT=[] TXT=[]}] Authorities=[] Additionals=[{Name=[] Type=OPT Class=Unknown TTL=0 DataLength=0 Data=[] IP=<nil> NS=[] CNAME=[] PTR=[] TXTs=[] SOA={ MName=[] RName=[] Serial=0 Refresh=0 Retry=0 Expire=0 Minimum=0} SRV={ Priority=0 Weight=0 Port=0 Name=[]} MX={ Preference=0 Name=[]} OPT=[] TXT=[]}]}
-  
+  97f031f9d7f1 IP6 2601:645:500:d6::4 > 2001:4860:4860::8888: ICMP6, echo request, id 8, seq 1, length 64
+  36c479892f1c IP6 2001:4860:4860::8888 > 2001:4860:4860::8888::4: ICMP6, echo reply, id 8, seq 1, length 64
 
-nftrace can also handle inserting and removing the rule for you:
-
-.. code:: bash
-
-  [eiginn:~]$ sudo nftrace -l -4 'PREROUTING -s 8.8.8.8/32 -p udp -m udp --sport 53 -m limit --limit 2/min'
-  2020/09/30 19:53:50 Adding rule: -t raw -I PREROUTING -s 8.8.8.8/32 -p udp -m udp --sport 53 -m limit --limit 2/min -j TRACE
-  2020/09/30 19:53:50 Trying to acquire the lock: /var/run/xtables.lock
-  <snip>
-  2020/09/30 19:53:58 Removing rule: -t raw -A PREROUTING -s 8.8.8.8/32 -p udp -m udp --sport 53 -m limit --limit 2/min -j TRACE
+  2020/10/02 19:56:07 Removing rule: -t raw -A OUTPUT -d 2001:4860:4860::8888/128 -p ipv6-icmp -j TRACE
+  2020/10/02 19:56:07 Removing rule: -t raw -A PREROUTING -s 2001:4860:4860::8888/128 -p ipv6-icmp -j TRACE
 
 
 Why
@@ -155,6 +149,14 @@ Previously to keep rule set stable for a short capture I would run something lik
   + iptables -t raw -D OUTPUT -d 8.8.8.8 -j TRACE
   + set +x
   root@somenode:~#
+
+
+Warnings
+--------
+Caution should be taken when making any kind of firewall changes, especially involving the TRACE target.
+I have seen machines become unresponsive and basically fall off the network due trace rules that were not carefully chosen to limit how often they are hit.
+
+A timeout of 30s is default to make some attempt to recover if your session hangs, see also using the limit option.
 
 
 Prerequisites
@@ -183,7 +185,6 @@ Prerequisites
 TODO
 ----
 
-- How to handle bidirectional flows? right now its unidirectional unless TRACE rules are handled separately
 - Inject comment "match" into nftrace handled rules to make obvious where the rule came from.
 
 Alternative Ideas
