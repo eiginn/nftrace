@@ -1,3 +1,5 @@
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Feiginn%2Fnftrace.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2Feiginn%2Fnftrace?ref=badge_shield)
+
 NFTRACE
 =======
 Easier tracing of packets through iptables
@@ -243,3 +245,7 @@ Enter nflog+tshark, this still uses ``nfnetlink_log`` as before, except we're go
   TRACE: security:INPUT:policy:2              Internet Protocol Version 4, Src: 8.8.8.8, Dst: 192.168.1.102  Domain Name System (response)
 
 You can also take a regular pcap of this and load it into wireshark and add ``nflog.prefix`` as a column
+
+
+## License
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2Feiginn%2Fnftrace.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2Feiginn%2Fnftrace?ref=badge_large)
