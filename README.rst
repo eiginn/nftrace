@@ -11,7 +11,7 @@ Installation
 
 
 Examples
--------
+--------
 Quick and contrived example: "Weird, udp dns queries to 8.8.8.8 work and yet 8.8.4.4 is timing out, how odd" :)
 
 .. code:: bash
