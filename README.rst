@@ -5,6 +5,8 @@ Easier tracing of packets through iptables
 Installation
 ------------
 
+Grab a release archive or deb from https://github.com/eiginn/nftrace/releases or:
+
 .. code:: bash
 
   go get -u -v github.com/eiginn/nftrace/cmd/nftrace
