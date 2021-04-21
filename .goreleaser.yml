@@ -1,0 +1,44 @@
+# This is an example .goreleaser.yml file with some sane defaults.
+# Make sure to check the documentation at http://goreleaser.com
+env:
+  - GO111MODULE=on
+before:
+  hooks:
+    # You may remove this if you don't use go modules.
+    - go mod tidy
+builds:
+  - main: cmd/nftrace/main.go
+    binary: nftrace
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -v
+    ldflags:
+      - -X github.com/eiginn/nftrace.BuildVersion={{.Version}}
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+checksum:
+  name_template: 'checksums.txt'
+snapshot:
+  name_template: "{{ .Tag }}-next"
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - '^docs:'
+      - '^test:'
+nfpms:
+  - formats: [deb]
+    package_name: "nftrace"
+    section: "net"
+    priority: "optional"
+    maintainer: "Ryan Carter <ryan@cloudflare.com>"
+    description: Easier tracing of packets through iptables
+    homepage: "https://github.com/eiginn/nftrace"
+    license: "MIT"
+    dependencies:
+      - iptables
+      - libc6 (>= 2.26)
