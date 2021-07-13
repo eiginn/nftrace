@@ -167,7 +167,8 @@ func CheckSysctl(af string) {
 		log.Fatal(err)
 	}
 	if val != "nfnetlink_log" {
-		log.Fatalf("nfnetlink_log not loaded for address family, check 'sysctl net.netfilter.nf_log.%s'", af)
+		log.Fatalf("nfnetlink_log not loaded for address family, 'modprobe nfnetlink_log' kernel module and "+
+			"enable it with: 'sysctl -w net.netfilter.nf_log.%s=nfnetlink_log'", af)
 	}
 }
 
