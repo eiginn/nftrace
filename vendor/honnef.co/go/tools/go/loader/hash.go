@@ -6,14 +6,15 @@ import (
 	"sort"
 	"strings"
 
-	"honnef.co/go/tools/internal/cache"
+	"honnef.co/go/tools/go/buildid"
+	"honnef.co/go/tools/lintcmd/cache"
 )
 
 // computeHash computes a package's hash. The hash is based on all Go
 // files that make up the package, as well as the hashes of imported
 // packages.
-func computeHash(pkg *PackageSpec) (cache.ActionID, error) {
-	key := cache.NewHash("package " + pkg.PkgPath)
+func computeHash(c *cache.Cache, pkg *PackageSpec) (cache.ActionID, error) {
+	key := c.NewHash("package " + pkg.PkgPath)
 	fmt.Fprintf(key, "goos %s goarch %s\n", runtime.GOOS, runtime.GOARCH)
 	fmt.Fprintf(key, "import %q\n", pkg.PkgPath)
 
@@ -74,7 +75,7 @@ func getBuildid(f string) (string, error) {
 	if h, ok := buildidCache[f]; ok {
 		return h, nil
 	}
-	h, err := ReadFile(f)
+	h, err := buildid.ReadFile(f)
 	if err != nil {
 		return "", err
 	}

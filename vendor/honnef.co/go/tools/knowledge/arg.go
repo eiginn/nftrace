@@ -1,6 +1,6 @@
 package knowledge
 
-var args = map[string]int{
+var Args = map[string]int{
 	"(*encoding/json.Decoder).Decode.v":    0,
 	"(*encoding/json.Encoder).Encode.v":    0,
 	"(*encoding/xml.Decoder).Decode.v":     0,
@@ -33,14 +33,35 @@ var args = map[string]int{
 	"runtime.SetFinalizer.finalizer":       1,
 	"runtime.SetFinalizer.obj":             0,
 	"sort.Sort.data":                       0,
+	"strconv.AppendFloat.bitSize":          4,
+	"strconv.AppendFloat.fmt":              2,
+	"strconv.AppendInt.base":               2,
+	"strconv.AppendUint.base":              2,
+	"strconv.FormatComplex.bitSize":        3,
+	"strconv.FormatComplex.fmt":            1,
+	"strconv.FormatFloat.bitSize":          3,
+	"strconv.FormatFloat.fmt":              1,
+	"strconv.FormatInt.base":               1,
+	"strconv.FormatUint.base":              1,
+	"strconv.ParseComplex.bitSize":         1,
+	"strconv.ParseFloat.bitSize":           1,
+	"strconv.ParseInt.base":                1,
+	"strconv.ParseInt.bitSize":             2,
+	"strconv.ParseUint.base":               1,
+	"strconv.ParseUint.bitSize":            2,
 	"time.Parse.layout":                    0,
 	"time.Sleep.d":                         0,
 	"xml.Marshal.v":                        0,
 	"xml.Unmarshal.v":                      1,
 }
 
+// Arg turns the name of an argument into an argument index.
+// Indices are zero-based and method receivers do not count as arguments.
+//
+// Arg refers to a manually compiled mapping (see the Args variable.)
+// Modify the knowledge package to add new arguments.
 func Arg(name string) int {
-	n, ok := args[name]
+	n, ok := Args[name]
 	if !ok {
 		panic("unknown argument " + name)
 	}

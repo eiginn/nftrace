@@ -13,7 +13,7 @@ const sysctlConfPath = "/etc/sysctl.conf"
 func parseConfig(path string, out map[string]string) error {
 	file, err := os.Open(path)
 	if err != nil {
-		return fmt.Errorf("could not open file: %s", err.Error())
+		return fmt.Errorf("could not open file: %v", err)
 	}
 	defer file.Close()
 
@@ -36,7 +36,7 @@ func parseConfig(path string, out map[string]string) error {
 	}
 
 	if err := scanner.Err(); err != nil {
-		return fmt.Errorf("error reading file: %s", err.Error())
+		return fmt.Errorf("error reading file: %v", err)
 	}
 
 	return nil
@@ -52,24 +52,8 @@ func LoadConfig(files ...string) (map[string]string, error) {
 	out := make(map[string]string)
 	for _, f := range files {
 		if err := parseConfig(f, out); err != nil {
-			return nil, fmt.Errorf("could not parse file %s: %s", f, err.Error())
+			return nil, fmt.Errorf("could not parse file %s: %v", f, err)
 		}
 	}
 	return out, nil
-}
-
-// LoadConfigAndApply sets sysctl values from a list of sysctl configuration files.
-// The values in the rightmost files take priority.
-// If no file is specified, values are read from /etc/sysctl.conf.
-func LoadConfigAndApply(files ...string) error {
-	config, err := LoadConfig(files...)
-	if err != nil {
-		return fmt.Errorf("could not read configuration from files: %s", err.Error())
-	}
-	for k, v := range config {
-		if err := Set(k, v); err != nil {
-			return fmt.Errorf("could not set %s = %s: %s", k, v, err.Error())
-		}
-	}
-	return nil
 }

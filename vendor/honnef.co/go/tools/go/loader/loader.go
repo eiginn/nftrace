@@ -12,9 +12,10 @@ import (
 	"time"
 
 	"honnef.co/go/tools/config"
-	"honnef.co/go/tools/internal/cache"
-	"honnef.co/go/tools/internal/go/gcimporter"
+	"honnef.co/go/tools/lintcmd/cache"
 
+	"golang.org/x/exp/typeparams"
+	"golang.org/x/tools/go/gcexportdata"
 	"golang.org/x/tools/go/packages"
 )
 
@@ -26,7 +27,7 @@ type PackageSpec struct {
 	ID      string
 	Name    string
 	PkgPath string
-	// Errors that occured while building the import graph. These will
+	// Errors that occurred while building the import graph. These will
 	// primarily be parse errors or failure to resolve imports, but
 	// may also be other errors.
 	Errors          []packages.Error
@@ -37,6 +38,7 @@ type PackageSpec struct {
 	Imports         map[string]*PackageSpec
 	TypesSizes      types.Sizes
 	Hash            cache.ActionID
+	Module          *packages.Module
 
 	Config config.Config
 }
@@ -48,7 +50,7 @@ func (spec *PackageSpec) String() string {
 type Package struct {
 	*PackageSpec
 
-	// Errors that occured while loading the package. These will
+	// Errors that occurred while loading the package. These will
 	// primarily be parse or type errors, but may also be lower-level
 	// failures such as file-system ones.
 	Errors    []packages.Error
@@ -63,7 +65,7 @@ type Package struct {
 // syntax trees.
 //
 // The provided config can set any setting with the exception of Mode.
-func Graph(cfg *packages.Config, patterns ...string) ([]*PackageSpec, error) {
+func Graph(c *cache.Cache, cfg *packages.Config, patterns ...string) ([]*PackageSpec, error) {
 	var dcfg packages.Config
 	if cfg != nil {
 		dcfg = *cfg
@@ -71,10 +73,11 @@ func Graph(cfg *packages.Config, patterns ...string) ([]*PackageSpec, error) {
 	dcfg.Mode = packages.NeedName |
 		packages.NeedImports |
 		packages.NeedDeps |
-		packages.NeedExportsFile |
+		packages.NeedExportFile |
 		packages.NeedFiles |
 		packages.NeedCompiledGoFiles |
-		packages.NeedTypesSizes
+		packages.NeedTypesSizes |
+		packages.NeedModule
 	pkgs, err := packages.Load(&dcfg, patterns...)
 	if err != nil {
 		return nil, err
@@ -93,6 +96,7 @@ func Graph(cfg *packages.Config, patterns ...string) ([]*PackageSpec, error) {
 			ExportFile:      pkg.ExportFile,
 			Imports:         map[string]*PackageSpec{},
 			TypesSizes:      pkg.TypesSizes,
+			Module:          pkg.Module,
 		}
 		for path, imp := range pkg.Imports {
 			spec.Imports[path] = m[imp]
@@ -106,7 +110,7 @@ func Graph(cfg *packages.Config, patterns ...string) ([]*PackageSpec, error) {
 		} else {
 			spec.Config = config.DefaultConfig
 		}
-		spec.Hash, err = computeHash(spec)
+		spec.Hash, err = computeHash(c, spec)
 		if err != nil {
 			spec.Errors = append(spec.Errors, convertError(err)...)
 		}
@@ -157,14 +161,12 @@ func Load(spec *PackageSpec) (*Package, Stats, error) {
 	stats := Stats{
 		Export: map[*PackageSpec]time.Duration{},
 	}
-	var b []byte
 	for _, imp := range spec.Imports {
 		if imp.PkgPath == "unsafe" {
 			continue
 		}
 		t := time.Now()
-		var err error
-		_, b, err = prog.loadFromExport(imp, b)
+		_, err := prog.loadFromExport(imp)
 		stats.Export[imp] = time.Since(t)
 		if err != nil {
 			return nil, stats, err
@@ -173,32 +175,31 @@ func Load(spec *PackageSpec) (*Package, Stats, error) {
 	t := time.Now()
 	pkg, err := prog.loadFromSource(spec)
 	if err == errMaxFileSize {
-		pkg, _, err = prog.loadFromExport(spec, b)
+		pkg, err = prog.loadFromExport(spec)
 	}
 	stats.Source = time.Since(t)
 	return pkg, stats, err
 }
 
 // loadFromExport loads a package from export data.
-func (prog *program) loadFromExport(spec *PackageSpec, b []byte) (*Package, []byte, error) {
+func (prog *program) loadFromExport(spec *PackageSpec) (*Package, error) {
 	// log.Printf("Loading package %s from export", spec)
 	if spec.ExportFile == "" {
-		return nil, b, fmt.Errorf("no export data for %q", spec.ID)
+		return nil, fmt.Errorf("no export data for %q", spec.ID)
 	}
 	f, err := os.Open(spec.ExportFile)
 	if err != nil {
-		return nil, b, err
+		return nil, err
 	}
 	defer f.Close()
 
-	b, err = gcimporter.GetExportData(f, b)
+	r, err := gcexportdata.NewReader(f)
 	if err != nil {
-		return nil, b, err
+		return nil, err
 	}
-
-	_, tpkg, err := gcimporter.IImportData(prog.fset, prog.packages, b[1:], spec.PkgPath)
+	tpkg, err := gcexportdata.Read(r, prog.fset, prog.packages, spec.PkgPath)
 	if err != nil {
-		return nil, b, err
+		return nil, err
 	}
 	pkg := &Package{
 		PackageSpec: spec,
@@ -208,7 +209,7 @@ func (prog *program) loadFromExport(spec *PackageSpec, b []byte) (*Package, []by
 	// runtime.SetFinalizer(pkg, func(pkg *Package) {
 	// 	log.Println("Unloading package", pkg.PkgPath)
 	// })
-	return pkg, b, nil
+	return pkg, nil
 }
 
 // loadFromSource loads a package from source. All of its dependencies
@@ -232,6 +233,7 @@ func (prog *program) loadFromSource(spec *PackageSpec) (*Package, error) {
 			Selections: make(map[*ast.SelectorExpr]*types.Selection),
 		},
 	}
+	typeparams.InitInstances(pkg.TypesInfo)
 	// runtime.SetFinalizer(pkg, func(pkg *Package) {
 	// 	log.Println("Unloading package", pkg.PkgPath)
 	// })
@@ -325,6 +327,12 @@ func convertError(err error) []packages.Error {
 			Kind: packages.TypeError,
 		})
 
+	case config.ParseError:
+		errs = append(errs, packages.Error{
+			Pos:  fmt.Sprintf("%s:%d", err.Filename, err.Line),
+			Msg:  fmt.Sprintf("%s (last key parsed: %q)", err.Message, err.LastKey),
+			Kind: packages.ParseError,
+		})
 	default:
 		errs = append(errs, packages.Error{
 			Pos:  "-",

@@ -191,13 +191,14 @@ type lblock struct {
 // specified label, creating it if needed.
 //
 func (f *Function) labelledBlock(label *ast.Ident) *lblock {
-	lb := f.lblocks[label.Obj]
+	obj := f.Pkg.objectOf(label)
+	lb := f.lblocks[obj]
 	if lb == nil {
 		lb = &lblock{_goto: f.newBasicBlock(label.Name)}
 		if f.lblocks == nil {
-			f.lblocks = make(map[*ast.Object]*lblock)
+			f.lblocks = make(map[types.Object]*lblock)
 		}
-		f.lblocks[label.Obj] = lb
+		f.lblocks[obj] = lb
 	}
 	return lb
 }
@@ -376,7 +377,19 @@ func buildReferrers(f *Function) {
 			for _, rand := range rands {
 				if r := *rand; r != nil {
 					if ref := r.Referrers(); ref != nil {
-						*ref = append(*ref, instr)
+						if len(*ref) == 0 {
+							// per median, each value has two referrers, so we can avoid one call into growslice
+							//
+							// Note: we experimented with allocating
+							// sequential scratch space, but we
+							// couldn't find a value that gave better
+							// performance than making many individual
+							// allocations
+							*ref = make([]Instruction, 1, 2)
+							(*ref)[0] = instr
+						} else {
+							*ref = append(*ref, instr)
+						}
 					}
 				}
 			}
@@ -403,14 +416,14 @@ func (f *Function) emitConsts() {
 }
 
 func (f *Function) emitConstsFew() {
-	dedup := make([]*Const, 0, 32)
+	dedup := make([]Constant, 0, 32)
 	for _, c := range f.consts {
 		if len(*c.Referrers()) == 0 {
 			continue
 		}
 		found := false
 		for _, d := range dedup {
-			if c.typ == d.typ && c.Value == d.Value {
+			if c.equal(d) {
 				replaceAll(c, d)
 				found = true
 				break
@@ -446,9 +459,26 @@ func (f *Function) emitConstsMany() {
 			continue
 		}
 
+		var typ types.Type
+		var val constant.Value
+		switch c := c.(type) {
+		case *Const:
+			typ = c.typ
+			val = c.Value
+		case *ArrayConst:
+			// ArrayConst can only encode zero constants, so all we need is the type
+			typ = c.typ
+		case *AggregateConst:
+			// ArrayConst can only encode zero constants, so all we need is the type
+			typ = c.typ
+		case *GenericConst:
+			typ = c.typ
+		default:
+			panic(fmt.Sprintf("unexpected type %T", c))
+		}
 		k := constKey{
-			typ:   c.typ,
-			value: c.Value,
+			typ:   typ,
+			value: val,
 		}
 		if dup, ok := m[k]; !ok {
 			m[k] = c
@@ -566,8 +596,13 @@ func (f *Function) finishBody() {
 		lift(f)
 	}
 
-	// emit constants after lifting, because lifting may produce new constants.
+	// emit constants after lifting, because lifting may produce new constants, but before other variable splitting,
+	// because it expects constants to have been deduplicated.
 	f.emitConsts()
+
+	if f.Prog.mode&SplitAfterNewInformation != 0 {
+		splitOnNewInformation(f.Blocks[0], &StackMap{})
+	}
 
 	f.namedResults = nil // (used by lifting)
 	f.implicitResults = nil
@@ -917,10 +952,19 @@ func WriteFunction(buf *bytes.Buffer, f *Function) {
 // comment is an optional string for more readable debugging output.
 //
 func (f *Function) newBasicBlock(comment string) *BasicBlock {
+	var instrs []Instruction
+	if len(f.functionBody.scratchInstructions) > 0 {
+		instrs = f.functionBody.scratchInstructions[0:0:avgInstructionsPerBlock]
+		f.functionBody.scratchInstructions = f.functionBody.scratchInstructions[avgInstructionsPerBlock:]
+	} else {
+		instrs = make([]Instruction, 0, avgInstructionsPerBlock)
+	}
+
 	b := &BasicBlock{
 		Index:   len(f.Blocks),
 		Comment: comment,
 		parent:  f,
+		Instrs:  instrs,
 	}
 	b.Succs = b.succs2[:0]
 	f.Blocks = append(f.Blocks, b)
