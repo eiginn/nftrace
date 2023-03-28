@@ -6,9 +6,8 @@ require (
 	github.com/coreos/go-iptables v0.6.0
 	github.com/florianl/go-nflog/v2 v2.0.1
 	github.com/gofrs/flock v0.8.1
-	github.com/google/gopacket v1.1.19
+	github.com/gopacket/gopacket v1.1.0
 	github.com/lorenzosaino/go-sysctl v0.3.1
-	github.com/x-way/pktdump v0.0.4
 	gopkg.in/alecthomas/kingpin.v2 v2.2.6
 )
 

@@ -11,11 +11,11 @@ import (
 	"sync"
 
 	"github.com/coreos/go-iptables/iptables"
+	"github.com/eiginn/nftrace/pktdump"
 	"github.com/florianl/go-nflog/v2"
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
+	"github.com/gopacket/gopacket"
+	"github.com/gopacket/gopacket/layers"
 	sysctl "github.com/lorenzosaino/go-sysctl"
-	"github.com/x-way/pktdump"
 )
 
 var (
