@@ -22,9 +22,9 @@ require (
 	golang.org/x/exp/typeparams v0.0.0-20230223210539-50820d90acfd // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/mod v0.8.0 // indirect
-	golang.org/x/net v0.7.0 // indirect
+	golang.org/x/net v0.25.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
-	golang.org/x/sys v0.5.0 // indirect
+	golang.org/x/sys v0.20.0 // indirect
 	golang.org/x/tools v0.6.0 // indirect
 	honnef.co/go/tools v0.4.2 // indirect
 )
