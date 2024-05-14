@@ -1,6 +1,6 @@
 module github.com/eiginn/nftrace
 
-go 1.20
+go 1.22
 
 require (
 	github.com/coreos/go-iptables v0.6.0
