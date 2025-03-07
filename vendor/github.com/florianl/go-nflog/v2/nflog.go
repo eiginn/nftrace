@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"log"
+	"sync"
 	"time"
 	"unsafe"
 
@@ -18,23 +18,26 @@ type Nflog struct {
 	// Con is the pure representation of a netlink socket
 	Con *netlink.Conn
 
-	logger *log.Logger
+	logger Logger
 
-	flags    []byte //uint16
-	bufsize  []byte //uint32
-	qthresh  []byte //uint32
-	timeout  []byte //uint32
+	wg sync.WaitGroup
+
+	flags    []byte // uint16
+	bufsize  []byte // uint32
+	qthresh  []byte // uint32
+	timeout  []byte // uint32
 	group    uint16
 	copyMode uint8
 	settings uint16
 }
 
-// devNull satisfies io.Writer, in case *log.Logger is not provided
+var _ Logger = (*devNull)(nil)
+
+// devNull satisfies the Logger interface.
 type devNull struct{}
 
-func (devNull) Write(p []byte) (int, error) {
-	return 0, nil
-}
+func (dn *devNull) Debugf(format string, args ...interface{}) {}
+func (dn *devNull) Errorf(format string, args ...interface{}) {}
 
 // for detailes see https://github.com/tensorflow/tensorflow/blob/master/tensorflow/go/tensor.go#L488-L505
 var nativeEndian binary.ByteOrder
@@ -76,7 +79,7 @@ func Open(config *Config) (*Nflog, error) {
 	nflog.Con = con
 
 	if config.Logger == nil {
-		nflog.logger = log.New(new(devNull), "", 0)
+		nflog.logger = new(devNull)
 	} else {
 		nflog.logger = config.Logger
 	}
@@ -105,7 +108,14 @@ func checkFlags(flags uint16) error {
 
 // Close the connection to the netfilter log subsystem
 func (nflog *Nflog) Close() error {
-	return nflog.Con.Close()
+	err := nflog.Con.Close()
+	nflog.wg.Wait()
+	return err
+}
+
+// SetOption allows to enable or disable netlink socket options.
+func (nflog *Nflog) SetOption(o netlink.ConnOption, enable bool) error {
+	return nflog.Con.SetOption(o, enable)
 }
 
 // Register your own function as callback for a netfilter log group.
@@ -123,7 +133,7 @@ func (nflog *Nflog) Register(ctx context.Context, fn HookFunc) error {
 				return 0
 			}
 		}
-		nflog.logger.Printf("Could not receive message: %v\n", err)
+		nflog.logger.Errorf("Could not receive message: %v\n", err)
 		return 1
 	})
 }
@@ -131,6 +141,10 @@ func (nflog *Nflog) Register(ctx context.Context, fn HookFunc) error {
 // RegisterWithErrorFunc attaches a callback function to a callback to a netfilter log group and allows
 // custom error handling for errors encountered when reading from the underlying netlink socket.
 func (nflog *Nflog) RegisterWithErrorFunc(ctx context.Context, fn HookFunc, errfn ErrorFunc) error {
+	// Avoid race conditions when dealing with the socket and receiving content.
+	nflog.wg.Add(1)
+	defer nflog.wg.Done()
+
 	// unbinding existing handler (if any)
 	seq, err := nflog.setConfig(unix.AF_UNSPEC, 0, 0, []netlink.Attribute{
 		{Type: nfUlACfgCmd, Data: []byte{nfUlnlCfgCmdPfUnbind}},
@@ -184,12 +198,11 @@ func (nflog *Nflog) RegisterWithErrorFunc(ctx context.Context, fn HookFunc, errf
 	if nflog.timeout[0] != 0 || nflog.timeout[1] != 0 || nflog.timeout[2] != 0 || nflog.timeout[3] != 0 {
 		// set timeout
 		attrs = append(attrs, netlink.Attribute{Type: nfUlACfgTimeOut, Data: nflog.timeout})
-
 	}
 
-	if nflog.qthresh[0] != 0 || nflog.qthresh[1] != 1 || nflog.qthresh[2] != 0 || nflog.qthresh[3] != 0 {
+	if nflog.qthresh[0] != 0 || nflog.qthresh[1] != 0 || nflog.qthresh[2] != 0 || nflog.qthresh[3] != 0 {
 		// set qthresh
-		attrs = append(attrs, netlink.Attribute{Type: nfUlACfgQThresh, Data: nflog.timeout})
+		attrs = append(attrs, netlink.Attribute{Type: nfUlACfgQThresh, Data: nflog.qthresh})
 	}
 
 	if len(attrs) != 0 {
@@ -205,20 +218,23 @@ func (nflog *Nflog) RegisterWithErrorFunc(ctx context.Context, fn HookFunc, errf
 				{Type: nfUlACfgCmd, Data: []byte{nfUlnlCfgCmdUnbind}},
 			})
 			if err != nil {
-				nflog.logger.Printf("Could not unbind socket from configuration: %v", err)
+				nflog.logger.Errorf("Could not unbind socket from configuration: %v", err)
 				return
 			}
 		}()
+
+		nflog.wg.Add(1)
 		go func() {
 			// block until context is done
 			<-ctx.Done()
 			// Set the read deadline to a point in the past to interrupt
 			// possible blocking Receive() calls.
 			nflog.Con.SetReadDeadline(time.Now().Add(-1 * time.Second))
+			nflog.wg.Done()
 		}()
 		for {
 			if err := ctx.Err(); err != nil {
-				nflog.logger.Printf("Stop receiving nflog messages: %v", err)
+				nflog.logger.Errorf("Error and stopping receiving nflog messages: %v", err)
 				return
 			}
 			reply, err := nflog.Con.Receive()
@@ -237,7 +253,7 @@ func (nflog *Nflog) RegisterWithErrorFunc(ctx context.Context, fn HookFunc, errf
 				}
 				attrs, err := parseMsg(nflog.logger, msg)
 				if err != nil {
-					nflog.logger.Printf("Could not parse message: %v", err)
+					nflog.logger.Debugf("Could not parse message: %v", err)
 					continue
 				}
 				if ret := fn(attrs); ret != 0 {
@@ -301,7 +317,7 @@ func (nflog *Nflog) execute(req netlink.Message) (uint32, error) {
 	return seq, nil
 }
 
-func parseMsg(logger *log.Logger, msg netlink.Message) (Attribute, error) {
+func parseMsg(logger Logger, msg netlink.Message) (Attribute, error) {
 	a, err := extractAttributes(logger, msg.Data)
 	if err != nil {
 		return Attribute{}, err

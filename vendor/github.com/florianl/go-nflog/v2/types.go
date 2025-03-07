@@ -2,7 +2,6 @@ package nflog
 
 import (
 	"errors"
-	"log"
 	"time"
 )
 
@@ -81,6 +80,8 @@ const (
 	nfUlaAttrHwLen
 	nfUlaAttrCt
 	nfUlaAttrCtInfo
+	nfUlaAttrVlan
+	nfulaAttrL2Hdr
 )
 
 // Attribute contains various elements for nflog elements.
@@ -108,6 +109,20 @@ type Attribute struct {
 	HwProtocol *uint16
 	CtInfo     *uint32
 	Ct         *[]byte
+	Layer2Hdr  *[]byte
+	VLAN       *VLAN
+}
+
+// VLAN holds the VLAN information.
+type VLAN struct {
+	Proto uint16
+	TCI   uint16
+}
+
+// Logger provides logging functionality.
+type Logger interface {
+	Debugf(format string, args ...interface{})
+	Errorf(format string, args ...interface{})
 }
 
 // Config contains options for a Conn.
@@ -149,7 +164,7 @@ type Config struct {
 	ReadTimeout time.Duration
 
 	// Interface to log internals.
-	Logger *log.Logger
+	Logger Logger
 }
 
 // ErrorFunc is a function that receives all errors that happen while reading

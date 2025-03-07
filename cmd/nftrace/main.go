@@ -8,11 +8,11 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/alecthomas/kingpin/v2"
 	"github.com/coreos/go-iptables/iptables"
 	"github.com/eiginn/nftrace"
 	"github.com/florianl/go-nflog/v2"
 	"github.com/gofrs/flock"
-	"gopkg.in/alecthomas/kingpin.v2"
 )
 
 var (
@@ -39,6 +39,9 @@ func main() {
 	app.Version(nftrace.BuildVersion)
 
 	kingpin.MustParse(app.Parse(os.Args[1:]))
+
+	nftrace.CheckNftCompat()
+
 	nflogAF := "2" // ipv4 AF_INET
 	if *ipv4 == true && *ipv6 == true {
 		app.FatalUsage("Must specify only one of -4 or -6")

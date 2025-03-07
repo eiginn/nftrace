@@ -3,7 +3,7 @@ package nflog
 import (
 	"bytes"
 	"encoding/binary"
-	"log"
+	"fmt"
 	"time"
 
 	"github.com/florianl/go-nflog/v2/internal/unix"
@@ -11,7 +11,7 @@ import (
 	"github.com/mdlayher/netlink"
 )
 
-func extractAttribute(a *Attribute, logger *log.Logger, data []byte) error {
+func extractAttribute(a *Attribute, logger Logger, data []byte) error {
 	ad, err := netlink.NewAttributeDecoder(data)
 	if err != nil {
 		return err
@@ -114,8 +114,21 @@ func extractAttribute(a *Attribute, logger *log.Logger, data []byte) error {
 			ctInfo := ad.Uint32()
 			a.CtInfo = &ctInfo
 			ad.ByteOrder = nativeEndian
+		case nfulaAttrL2Hdr:
+			ad.ByteOrder = binary.BigEndian
+			l2hdr := ad.Bytes()
+			a.Layer2Hdr = &l2hdr
+			ad.ByteOrder = nativeEndian
+		case nfUlaAttrVlan:
+			ad.ByteOrder = binary.BigEndian
+			info := &VLAN{}
+			if err := extractVLAN(ad.Bytes(), info); err != nil {
+				return err
+			}
+			a.VLAN = info
+			ad.ByteOrder = nativeEndian
 		default:
-			logger.Printf("Unknown attribute: %d %v\n", ad.Type(), ad.Bytes())
+			logger.Debugf("Unknown attribute: %d %v\n", ad.Type(), ad.Bytes())
 		}
 	}
 
@@ -123,13 +136,13 @@ func extractAttribute(a *Attribute, logger *log.Logger, data []byte) error {
 }
 
 func checkHeader(data []byte) int {
-	if (data[0] == unix.AF_INET || data[0] == unix.AF_INET6) && data[1] == unix.NFNETLINK_V0 {
+	if (data[0] == unix.AF_INET || data[0] == unix.AF_INET6 || data[0] == unix.AF_BRIDGE) && data[1] == unix.NFNETLINK_V0 {
 		return 4
 	}
 	return 0
 }
 
-func extractAttributes(logger *log.Logger, msg []byte) (Attribute, error) {
+func extractAttributes(logger Logger, msg []byte) (Attribute, error) {
 	attrs := Attribute{}
 
 	offset := checkHeader(msg[:2])
@@ -137,4 +150,28 @@ func extractAttributes(logger *log.Logger, msg []byte) (Attribute, error) {
 		return attrs, err
 	}
 	return attrs, nil
+}
+
+const (
+	_              = iota
+	nfulaVLANProto /* __be16 */
+	nfulaVLANTCI   /* __be16 */
+)
+
+func extractVLAN(data []byte, info *VLAN) error {
+	ad, err := netlink.NewAttributeDecoder(data)
+	if err != nil {
+		return err
+	}
+	for ad.Next() {
+		switch ad.Type() {
+		case nfulaVLANProto:
+			info.Proto = ad.Uint16()
+		case nfulaVLANTCI:
+			info.TCI = ad.Uint16()
+		default:
+			return fmt.Errorf("extractVLAN()\t%d\n\t%v", ad.Type(), ad.Bytes())
+		}
+	}
+	return nil
 }

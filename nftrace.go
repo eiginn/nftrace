@@ -172,6 +172,19 @@ func CheckSysctl(af string) {
 	}
 }
 
+func CheckNftCompat() {
+	data, err := os.ReadFile("/proc/modules")
+	if err != nil {
+		log.Println("Warning: Could not check loaded kernel modules")
+		return
+	}
+
+	if strings.Contains(string(data), "nft_compat") {
+		log.Fatalf("ERROR: nft_compat kernel module is loaded. This tool only works with iptables-legacy, " +
+			"not with nftables compatibility layer. See manpage of xtables-nft and use xtables-monitor.")
+	}
+}
+
 func PrintPackets(verbose bool) {
 	packets.RLock()
 	if verbose == true {
